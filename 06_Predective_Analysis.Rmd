@@ -1,0 +1,214 @@
+---
+title: "06_Predective_Analytics_Inclass"
+author: "Swe Zin Ye"
+date: "2025-03-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Using Boston hosuign price - Make house price prediction
+Step invlved 
+1. Read the data
+2. Clean the data 
+3. Correlation analysis 
+4. Train nd test split 
+5. create a model 
+6. Make predictions 
+7. Capture train and test errors 
+
+```{r}
+
+library(ggcorrplot)
+library(ggplot2)
+library(caret)
+
+```
+
+
+
+
+```{r cars}
+
+house_prices <-read.csv("06_Regression_Boston_Housing_Prices.csv")
+
+```
+
+
+```{r}
+#step 2 Clean data 
+summary(house_prices)
+# clean the data just by replacing the NA value with mean values 
+
+#summary(replace(house_prices$CRIM, is.na(house_prices$CRIM),         #               mean(house_prices$CRIM,
+  #      na.rm = TRUE)))
+
+house_prices_clean <- data.frame(
+  lapply(house_prices, FUN = function(x) {
+    replace(x, is.na(x), 
+        mean(x, na.rm = TRUE))
+  })
+)
+summary(house_prices_clean)
+
+```
+
+
+```{r}
+#step 3: Correlation Analysis 
+# Cor function ( correlation)
+# - scatter plot ( Matrix of plots) pairs()
+#correlation matrix an numbers using ggcorrplot 
+
+ggcorrplot(corr= cor(house_prices_clean),
+           lab=TRUE,
+           lab_size = 2,
+           type = "lower")
+
+  
+
+
+
+```
+
+
+
+```{r}
+#Step 4: split the data randomly into Traiing ( 70 % to 80%) and Testing ( 30 % to 20%) 
+
+set.seed(1234)
+sample_postions<- sample(c("for_training","for_testing"),
+                         size = nrow(house_prices_clean),
+                         prob = c(0.8,0.2),
+                         replace = TRUE)
+head(sample_postions, 10)
+                        
+
+```
+
+
+```{r}
+#step4 (Cont): Create Training_Sample and Testing_Sample using Sample_ Positions 
+Training_Sample <- house_prices_clean[sample_postions == "for_training",]
+Testing_Sample <- house_prices_clean[sample_postions == "for_testing",]
+
+```
+
+
+
+```{r}
+#Step 5: create a model using training sample 
+#1. step forward/backward 
+#2. Lasso
+#3.Ridge
+
+model <- lm(MEDV ~.,data = Training_Sample)
+summary(model)
+
+
+```
+
+```{r}
+#Setp 6: capture the training error (MSE)-. degree of freedom 
+Training_Error <- sum((model$residuals)^2)/nrow(Traing_Sample)
+Training_Error
+
+```
+
+```{r}
+
+#Step 7: Make predections 
+predictions <- predict(model,Testing_Sample[c(-14)]) # remove the predected model colum , chek data set and remove the column number e.g price of house 
+Testing_Sample$Predicted_Output <- predictions
+testing_Error <-Testing_Sample$MEDV - Testing_Sample$Predicted_Output
+Testing_Error <- sum(testing_Error^2)/length(testing_Error)
+Testing_Error
+
+
+```
+```{r}
+
+#step-wise regression implementation 
+#AIC value is lesser , better 
+minimal_model <-lm(MEDV ~ 1, data = Training_Sample)
+final_model <- step(minimal_model,
+                    scope = ~ CRIM + ZN + INDUS + CHAS + NOX + RM + AGE + DIS + RAD + TAX + PTRATIO + B + LSTAT)
+summary(final_model)
+
+```
+
+
+
+```{r}
+# Step : Make predictions and calculate test MSE 
+
+Training_Error <- sum((final_model$residuals)^2)/nrow(Traing_Sample)
+Training_Error
+
+```
+
+
+```{r}
+#Step 7: Make predections 
+predictions <- predict(final_model,Testing_Sample[c(-14)]) # remove the predected model colum , chek data set and remove the column number e.g price of house 
+Testing_Sample$Predicted_Output <- predictions
+testing_Error <-Testing_Sample$MEDV - Testing_Sample$Predicted_Output
+Testing_Error <- sum(testing_Error^2)/length(testing_Error)
+Testing_Error
+
+
+```
+
+
+```{r}
+
+#Run Ridge Regression 
+
+training_parameters <- trainControl(method = "repeatedcv",
+                                    number = 10, 
+                                    repeats = 5,
+                                    verboseIter = F)
+
+
+ridge_model <- train(MEDV ~., 
+                data =  Training_Sample,
+                method = 'glmnet',
+                tuneGrid = expand.grid(alpha = 0, 
+                                       lambda = seq(0, 5, length = 50)), # set alpha = 0 , lambda = 0 to 5 and set of 50 
+                trControl = training_parameters)
+
+ridge_model$bestTune
+
+
+
+
+```
+
+
+
+```{r}
+#Make prediction using ridge 
+
+predictions2 <- predict(ridge_model,Testing_Sample)
+Testing_Sample$Predicted_Output2 <- predictions2
+
+Testing_Error2 <- sum((Testing_Sample$MEDV - Testing_Sample$Predicted_Output2)^2)/95
+
+Testing_Error2
+
+
+```
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

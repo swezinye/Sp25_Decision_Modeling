@@ -1,0 +1,149 @@
+---
+title: "Multiple Linear Regression"
+author: "Swe Zin Ye"
+date: "2025-03-16"
+output: html_document
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(MASS)
+library(corrplot)
+library(car)
+library(GGally)
+library(caret)
+library(glmnet)
+library(ggcorrplot)
+
+
+```
+
+### R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r }
+#import CSV file 
+data <- read.csv("06_Regression_Boston_Housing_Prices.csv")
+summary(data)
+```
+
+
+```{r}
+
+#Handle Missing Values 
+data_clean <-na.omit(data)
+
+# option fill with column mena ( data_clean <- data %>%
+  # mutate_all(~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+summary(data_clean)  # Summary of cleaned data
+head(data_clean)
+
+
+```
+
+```{r}
+#Normalization 
+
+standardized_data <- data_clean %>%
+  mutate(across(everything(), ~ ( . - mean(., na.rm = TRUE)) / sd(., na.rm = TRUE)))
+summary(standardized_data)  # Summary of standardized data
+head(standardized_data)
+```
+
+### "Data Description."
+Dataset: 06_Regression_Boston_Housing_Prices.csv
+dataset contains a total of 506 observations and 13 predictors (input features). Description of all the variables in the files are listed below:
+CRIM - per capita crime rate by town
+ZN - proportion of residential land zoned for lots over 25,000 sq.ft.
+INDUS - proportion of non-retail business acres per town.
+CHAS - Charles River dummy variable (1 if tract bounds river; 0 otherwise)
+NOX - nitric oxides concentration (parts per 10 million)
+RM - average number of rooms per dwelling
+AGE - proportion of owner-occupied units built prior to 1940
+DIS - weighted distances to five Boston employment centres
+RAD - index of accessibility to radial highways
+TAX - full-value property-tax rate per $10,000
+PTRATIO - pupil-teacher ratio by town
+B - 1000(Bk - 0.63)^2 where Bk is the proportion of blacks by town
+LSTAT - % lower status of the population
+MEDV - Median value of owner-occupied homes in $1000’s
+
+
+
+
+```{r}
+# Min-Max Normalization
+min_max_normalized_data <- data_clean %>%
+  mutate(across(everything(), ~ ( . - min(., na.rm = TRUE)) / (max(., na.rm = TRUE) - min(., na.rm = TRUE))))
+
+summary(min_max_normalized_data)  # Summary of min-max normalized data
+
+
+head(min_max_normalized_data)
+```
+
+### "Collinearity Assumption."
+
+
+```{r}
+cor_matrix <- cor(data_clean, use = "complete.obs")
+corrplot(cor_matrix,method = "circle")
+
+```
+
+
+
+
+```{r}
+
+# Check VIF (Variance Inflation Factor) for multicollinearity
+vif_model <- lm(MEDV ~ ., data = data_clean)  # Assuming 'medv' is the dependent variable
+vif(vif_model)
+
+```
+
+### "Collinearity plots"
+```{r}
+ggpairs(data_clean)
+
+
+```
+
+```{r}
+
+ggcorrplot(cor_matrix, hc.order= TRUE, type = "lower")
+```
+
+
+
+
+
+### "Regression implementation"
+
+```{r}
+
+#Linear Regression and Bias-Variance Tradeoff
+# Fit a linear regression model
+linear_model <- lm(as.formula(paste(target_variable, "~ .")), data = data_clean)
+
+
+```
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

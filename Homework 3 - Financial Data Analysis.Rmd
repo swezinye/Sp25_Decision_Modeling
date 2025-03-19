@@ -1,0 +1,317 @@
+---
+title: "Homework 3 - Financial Data Analysis"
+author: "Swe Zin Ye "
+date: "2025-03-14"
+output: html_document
+---
+
+
+<style>
+/* Centering the Title */
+.centered-heading {
+  text-align: center;  /* Centers the text horizontally */
+  background-color: #800080;  /* Purple background */
+  color: #FFFFFF;  /* White text */
+  padding: 20px;
+  border-radius: 10px;
+  font-size: 22px; 
+  font-weight: bold;  
+  margin-top: 50px;  
+  width: 50%;  
+  margin-left: auto; 
+  margin-right: auto;  
+}
+</style>
+
+<!-- Centered Heading -->
+<p class="centered-heading"> **Apple Inc. Stock Evaluation: A MACD-Based Financial Analysis in R**</p>
+
+
+<style>
+p.purple_box {
+  background-color: #800080;
+  color: #FFFFFF;
+  padding: 10px;
+  border: 1px solid #800080;
+  margin-left: 8px;
+  border-radius: 5px;
+  font-style: normal;
+}
+
+p.heading {
+  background-color: #800080;
+  margin: auto;
+  width: 95%;
+  padding: 5px;
+  color:#FFFFFF;
+  font-style: bold;
+}
+
+p.regular {
+  margin: auto;
+  padding: 5px;
+}
+
+</style>
+
+<p class="purple_box">
+
+<p class="regular"> Conduct financial analysis and quantitative trading using Yahoo stock data over a one-year period. Utilize the MACD method to calculate net returns, total investment, and the average investment per stock
+</p>
+
+
+<br>
+
+<p class="heading"> <b> Quantitative Trading Strategy (Business Logic):
+Moving average convergence/divergence (MACD, or MAC-D) is a trend-following momentum indicator that shows the relationship between two exponential moving averages (EMAs) of a security’s price. Note: The long and short moving averages are EMA values and not simply rolling means. The two EMAs must converge and diverge in order for the MACD technical analysis strategy to work. The short EMA is an exponential smoothing moving average with an n of 12 days, while the long EMA has a n of 26 days. The difference between these two EMA values, depicted as an purple line in the plot below, is the indicator line or the MACD indicator value. The 9-day Exponential Smoothing Moving Average value obtained using the MACD difference (MACD indicator value) is what is referred to as the "signal line," which is the purple line.</b> </p>
+
+</br>
+
+
+### **1. Introduction**
+In this financial analysis, we perform " Quantitative trading" of **Apple Inc.(AAPL)** using two popular indicators : 
+-**MACD ( 12,16)** for momentum and tren signals
+-**SMA() ** to track long-term price trends 
+The data is pulled from the **past year**, ending on **1st March 2025**
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#load necessary libraries 
+library(quantmod)
+library(TTR)
+library(ggplot2)
+library(dplyr)
+```
+
+### **2. Retrieve AAPL Stock Data**
+
+
+```{r Stock}
+#Function to get stock data from Yahoo Finance #start_date -> one year before today 
+#----------------------------------------------------------------------------------
+#Set date range 
+
+start_date<- as.Date("2024-01-01")
+end_date<- as.Date("2024-12-31")
+
+#Fetch AAPL data from Yahoo Finance 
+
+aapl_data<-getSymbols(Symbols = "AAPL",
+                      env = parent.frame(),
+                      reload.Symbols = FALSE,
+                      verbose = TRUE,
+                      src = "yahoo",
+                      symbol.lookup = TRUE,
+                      from = start_date, 
+                      to = end_date,
+                      auto.assign = FALSE)
+
+#View first few rows 
+
+head(aapl_data)
+
+
+names(aapl_data)<- c("Open","High","Low","Close","Vol","Adj")
+
+summary(aapl_data)
+
+
+
+
+
+```
+
+### **3. Visualize AAPL Closing Price with SMAs**   
+
+
+
+```{r Visualize}
+
+
+plot(Cl(aapl_data), main = "AAPL Closing Price with SMA (12,26)", col =  "blue", lwd = 3)
+
+#Calculate SMAs 
+
+aapl_data$SMAShort <- SMA( aapl_data$Close,12) # 12 dyas SMA 
+aapl_data$SMALong<-SMA(aapl_data$Close,26) # 26 days SMA 
+
+
+# Add SMA lines to the plot 
+
+lines(aapl_data$SMAShort, col = "gold", lwd = 3)
+lines(aapl_data$SMALong, col = "red", lwd =  3 )
+
+#Add legend 
+
+legend("topright", legend = c("Close Price", "SMA(12)", "SMA(26)", col = c("blue", "gold","red"), lwd=3))
+
+
+#Remove NA values to clean up the data 
+
+aapl_data<- na.omit(aapl_data)
+
+
+
+
+
+```
+
+### **4.Calculate MACD and Signal**
+
+The EMA formula is as follows:
+EMA(t) = (Close(t) * Smoothing Factor) + (EMA(t-1) * (1 - Smoothing Factor))
+where:
+- Close(t) is the closing price of the stock on day 't',
+- EMA(t) is the EMA value for day 't',
+- EMA(t-1) is the EMA value for the previous day, and
+- Smoothing Factor = 2 / (Time Period + 1).
+
+```{r calculate }
+# Calculate MACD and Signal Line 
+# MACD = EMA 12 - EMA 26 
+
+chartSeries(aapl_data,
+            subset='2024-01::2024-12',
+            theme=chartTheme('white'))
+addMACD(fast=12,slow=26,signal=9,type="EMA")
+
+
+macd <- MACD(Cl(aapl_data),nFast = 12,nSlow = 26,nSig = 9,maType = EMA, percent = FALSE)
+
+
+# Add MACD components as separate columns
+aapl_data$MACD <- macd$macd
+aapl_data$Signal <- macd$signal
+aapl_data$Histogram <- macd$macd - macd$signal
+
+# Remove rows with NA values
+aapl_data <- na.omit(aapl_data)
+
+#Plot the closing price of MACD 
+
+par(mfrow = c(2,1)) #Set the Layout to have two plots ( one above the other)
+
+#Plot 1: AAPL Clsoing Price 
+plot(Cl(aapl_data),main =  "AAPL Stock- Closing Price", col = "green", lwd = 2)
+
+
+#Print a smaple of the data with MACD 
+head(aapl_data[,c("Close", "MACD","Signal", "Histogram")])
+
+
+
+
+```
+
+```{r}
+#Prepare data for Crossover strategy 
+# Identify buy and sell points
+# Plot 2: MACD and Signal Line 
+plot(aapl_data$MACD, main= " MACD(12,26) and Signal Line (9)", col = "purple", lwd = 3)
+lines(aapl_data$Signal,col = "orange", lwd = 3)
+legend("topright", legend = c("MACD", "Signal Line"), col = c("purple", "orange"), lwd = 3)
+
+
+#Remove rows with NA values after adding lag
+
+aapl_data <- na.omit(aapl_data)
+
+ 
+#Print few rows of Invest/Exit
+head(aapl_data)
+
+
+```
+
+Identify Buy/Sell Points:
+
+Buy when MACD crosses above the Signal line.
+Sell when MACD crosses below the Signal line.
+Plot the Buy/Sell Signals:
+
+
+
+
+```{r}
+
+
+# Identify buy and sell points
+aapl_data$Buy_Signal <- ifelse(aapl_data$MACD > aapl_data$Signal & lag(aapl_data$MACD) <= lag(aapl_data$Signal), Cl(aapl_data), NA)
+aapl_data$Sell_Signal <- ifelse(aapl_data$MACD < aapl_data$Signal & lag(aapl_data$MACD) >= lag(aapl_data$Signal), Cl(aapl_data), NA)
+
+# Plot buy and sell points
+
+
+plot(Cl(aapl_data), main = "AAPL Stock Price with Buy/Sell Signals", col = "blue", lwd = 2)
+points(index(aapl_data)[!is.na(aapl_data$Buy_Signal)], aapl_data$Buy_Signal[!is.na(aapl_data$Buy_Signal)], col = "green", pch = 19)
+points(index(aapl_data)[!is.na(aapl_data$Sell_Signal)], aapl_data$Sell_Signal[!is.na(aapl_data$Sell_Signal)], col = "red", pch = 19)
+
+
+
+```
+
+
+```{r}
+
+# Collect buy and sell dates and prices
+buy_dates <- index(aapl_data)[!is.na(aapl_data$Buy_Signal)]
+sell_dates <- index(aapl_data)[!is.na(aapl_data$Sell_Signal)]
+
+buy_prices <- na.omit(aapl_data$Buy_Signal)
+sell_prices <- na.omit(aapl_data$Sell_Signal)
+
+# Match buy and sell signals
+matched_buy_prices <- c()
+matched_sell_prices <- c()
+matched_buy_dates <- c()
+matched_sell_dates <- c()
+
+for (i in seq_along(buy_dates)) {
+  sell_index <- which(sell_dates > buy_dates[i])[1]
+  if (!is.na(sell_index)) {
+    matched_buy_prices <- c(matched_buy_prices, buy_prices[i])
+    matched_sell_prices <- c(matched_sell_prices, sell_prices[sell_index])
+    matched_buy_dates <- c(matched_buy_dates, buy_dates[i])
+    matched_sell_dates <- c(matched_sell_dates, sell_dates[sell_index])
+  }
+}
+
+# Calculate profits and ROI
+profits <- matched_sell_prices - matched_buy_prices
+total_profit <- sum(profits)
+total_investment <- sum(matched_buy_prices)
+avg_investment <- mean(matched_buy_prices)
+
+roi <- ifelse(total_investment > 0, (total_profit / total_investment) * 100, 0)
+
+# Check current position
+current_position <- ifelse(length(buy_prices) > length(sell_prices), "Long", "Short")
+
+# Print results
+cat("Trade Analysis:\n")
+results <- data.frame(
+  Buy_Date = as.Date(matched_buy_dates),
+  Buy_Price = as.numeric(matched_buy_prices),
+  Sell_Date = as.Date(matched_sell_dates),
+  Sell_Price = as.numeric(matched_sell_prices),
+  Profit = as.numeric(profits)
+)
+print(results)
+
+cat("\nNet Return: $", total_profit, "\n")
+cat("Total Investment: $", total_investment, "\n")
+cat("Average Investment: $", avg_investment, "\n")
+cat("ROI: ", roi, "%\n")
+cat("Current Position: ", current_position, "\n")
+
+```
+
+
+#### **Recommendation** 
+
+The return on investment stands at 2.07%, with a net return of $39.37 from a total investment of $1,897.92. With an average investment of $210.88, it is essential to ensure that potential losses do not put the overall investment at risk. The highest profit, +$23.92, was achieved with a buy price of $228.28 on November 19, 2024, and a sell price of $252.20. However, small losses were incurred on June 7, 2024, and August 15, 2024, with losses of -$3.77 and -$3.87, respectively.
+
+Trades held for over two weeks, such as from April 24 to May 29, 2024, and from November 19 to December 30, 2024, showed significantly larger profits of +$21.27 and +$23.92, respectively. Based on this, management should focus on establishing a clear exit strategy, which includes setting target exit prices for profit and implementing stop-loss levels to protect the investment if market conditions turn unfavorable.
+
+The data suggests that longer-term trades generally provide more consistent and higher returns. As such, trades should be held for a period of 2-4 weeks or longer. The analysis shows that buy dates often occur in the mid to late part of the month, while sell dates typically fall 2-4 weeks later. Management can leverage this timing pattern as a guideline for the next year, ensuring the use of effective risk management techniques.
+
