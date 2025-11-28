@@ -1,5 +1,5 @@
 ---
-title: "Homework 3 - Financial Data Analysis"
+title: " Financial Data Analysis"
 author: "Swe Zin Ye "
 date: "2025-03-14"
 output: html_document
