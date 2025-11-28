@@ -1,5 +1,5 @@
 ---
-title: "06_Predective_Analytics_Inclass"
+title: "Predective_Analytics_Inclass"
 author: "Swe Zin Ye"
 date: "2025-03-19"
 output: html_document
