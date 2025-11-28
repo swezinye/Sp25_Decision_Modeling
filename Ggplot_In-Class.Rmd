@@ -1,5 +1,5 @@
 ---
-title: "05_Plots_Base_Lattice_Ggplot"
+title: "Plots_Base_Lattice_Ggplot"
 output: html_document
 Submitted by: Swe Zin Ye
 ---
